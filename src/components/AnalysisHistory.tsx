@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,18 +14,16 @@ interface AnalysisHistoryItem {
   logo_detected: boolean;
   estimated_impressions: number | null;
   media_value_usd: number | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 export const AnalysisHistory = () => {
   const [history, setHistory] = useState<AnalysisHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
+  /* ------------------------------------------------------------------ */
+  const fetchHistory = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('analysis_results')
@@ -34,13 +32,33 @@ export const AnalysisHistory = () => {
         .limit(10);
 
       if (error) throw error;
-      setHistory(data || []);
-    } catch (error) {
-      console.error('Error fetching history:', error);
+      setHistory(data ?? []);
+    } catch (err) {
+      console.error('Error fetching history:', err);
+      setErrorMsg('Could not load analysis history.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+  /* ------------------------------------------------------------------ */
+
+  /* initial fetch + realtime listener */
+  useEffect(() => {
+    fetchHistory();
+
+    const channel = supabase
+      .channel('analysis_results_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'analysis_results' },
+        () => fetchHistory()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchHistory]);
 
   if (loading) {
     return (
@@ -58,6 +76,22 @@ export const AnalysisHistory = () => {
     );
   }
 
+  if (errorMsg) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Recent Analysis
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-destructive">{errorMsg}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (history.length === 0) {
     return (
       <Card>
@@ -68,12 +102,15 @@ export const AnalysisHistory = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No analysis history yet. Start analyzing posts to see your results here.</p>
+          <p className="text-muted-foreground">
+            No analysis history yet. Start analyzing posts to see your results here.
+          </p>
         </CardContent>
       </Card>
     );
   }
 
+  /* ------------------------------------------------------------------ */
   return (
     <Card>
       <CardHeader>
@@ -82,6 +119,7 @@ export const AnalysisHistory = () => {
           Recent Analysis
         </CardTitle>
       </CardHeader>
+
       <CardContent className="space-y-4">
         {history.map((item) => (
           <div key={item.id} className="border-l-4 border-primary/20 pl-4 py-2">
@@ -89,37 +127,40 @@ export const AnalysisHistory = () => {
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="secondary">{item.platform}</Badge>
-                  {item.logo_detected && item.brand_detected && (
+
+                  {item.logo_detected && item.brand_detected ? (
                     <Badge variant="default">{item.brand_detected}</Badge>
-                  )}
-                  {!item.logo_detected && (
+                  ) : (
                     <Badge variant="outline">No logo detected</Badge>
                   )}
                 </div>
-                
-                <div className="text-sm text-muted-foreground">
-                  {format(new Date(item.created_at), 'MMM d, yyyy • h:mm a')}
-                </div>
-                
+
+                {item.created_at && (
+                  <div className="text-sm text-muted-foreground">
+                    {format(new Date(item.created_at), 'MMM d, yyyy • h:mm a')}
+                  </div>
+                )}
+
                 {item.logo_detected && (
                   <div className="flex items-center gap-4 text-sm">
-                    {item.estimated_impressions && (
+                    {item.estimated_impressions ? (
                       <span className="flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" />
                         {item.estimated_impressions.toLocaleString()} impressions
                       </span>
-                    )}
-                    {item.media_value_usd && (
+                    ) : null}
+
+                    {item.media_value_usd ? (
                       <span className="font-semibold text-primary">
                         ${item.media_value_usd.toLocaleString()}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
-              
-              <Button 
-                variant="ghost" 
+
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => window.open(item.post_url, '_blank')}
                 className="gap-1"
