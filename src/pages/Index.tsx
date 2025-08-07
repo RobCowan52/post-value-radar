@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { AnalysisForm } from '@/components/AnalysisForm';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { LoadingAnimation } from '@/components/LoadingAnimation';
+import { AnalysisHistory } from '@/components/AnalysisHistory';
 import { Button } from '@/components/ui/button';
+import { AuthButton } from '@/components/AuthButton';
 import { BarChart3, ArrowLeft } from 'lucide-react';
 import type { AnalysisResult } from '@/services/socialAnalytics';
 
@@ -30,14 +32,17 @@ const Index = () => {
       {/* Header */}
       <header className="bg-white shadow-soft border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">SocialAnalytics Pro</h1>
+                <p className="text-sm text-muted-foreground">Brand detection & media value analysis</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">SocialAnalytics Pro</h1>
-              <p className="text-sm text-muted-foreground">Brand detection & media value analysis</p>
-            </div>
+            <AuthButton />
           </div>
         </div>
       </header>
@@ -55,10 +60,17 @@ const Index = () => {
                 engagement metrics and estimated media value.
               </p>
             </div>
-            <AnalysisForm 
-              onAnalysisComplete={handleAnalysisComplete}
-              onAnalysisStart={handleAnalysisStart}
-            />
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <AnalysisForm 
+                  onAnalysisComplete={handleAnalysisComplete}
+                  onAnalysisStart={handleAnalysisStart}
+                />
+              </div>
+              <div>
+                <AnalysisHistory />
+              </div>
+            </div>
           </div>
         )}
 
