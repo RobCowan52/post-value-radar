@@ -14,7 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_results: {
+        Row: {
+          analysis_metadata: Json | null
+          brand_detected: string | null
+          clicks: number | null
+          created_at: string
+          engagement_data: Json | null
+          estimated_impressions: number | null
+          id: string
+          logo_detected: boolean | null
+          media_value_usd: number | null
+          platform: string
+          post_url: string
+          user_id: string
+        }
+        Insert: {
+          analysis_metadata?: Json | null
+          brand_detected?: string | null
+          clicks?: number | null
+          created_at?: string
+          engagement_data?: Json | null
+          estimated_impressions?: number | null
+          id?: string
+          logo_detected?: boolean | null
+          media_value_usd?: number | null
+          platform: string
+          post_url: string
+          user_id: string
+        }
+        Update: {
+          analysis_metadata?: Json | null
+          brand_detected?: string | null
+          clicks?: number | null
+          created_at?: string
+          engagement_data?: Json | null
+          estimated_impressions?: number | null
+          id?: string
+          logo_detected?: boolean | null
+          media_value_usd?: number | null
+          platform?: string
+          post_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      brand_logos: {
+        Row: {
+          brand_name: string
+          confidence_threshold: number | null
+          created_at: string
+          id: string
+          logo_description: string | null
+          logo_image_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_name: string
+          confidence_threshold?: number | null
+          created_at?: string
+          id?: string
+          logo_description?: string | null
+          logo_image_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_name?: string
+          confidence_threshold?: number | null
+          created_at?: string
+          id?: string
+          logo_description?: string | null
+          logo_image_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
