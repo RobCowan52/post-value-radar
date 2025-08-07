@@ -1,66 +1,81 @@
-export interface PostMetrics {
-  impressions: number;
-  engagements: {
-    likes: number;
-    shares: number;
-    comments: number;
-  };
-  clicks: number;
-}
+import type { PostMetrics, AnalysisResult } from '../types';
 
-export interface AnalysisResult {
-  platform: string;
-  brand?: string;
-  logo_detected: boolean;
-  estimated_impressions?: number;
-  engagements?: PostMetrics['engagements'];
-  clicks?: number;
-  media_value?: string;
-  message?: string;
-  error?: string;
-  post_url?: string;
-}
+// Re-export types for compatibility
+export type { PostMetrics, AnalysisResult };
 
 export class SocialAnalyticsService {
-  static detectPlatform(url: string): string {
-    if (url.includes('instagram.com')) return 'Instagram';
-    if (url.includes('twitter.com') || url.includes('x.com')) return 'X';
-    if (url.includes('facebook.com')) return 'Facebook';
-    if (url.includes('linkedin.com')) return 'LinkedIn';
-    if (url.includes('tiktok.com')) return 'TikTok';
-    if (url.includes('youtube.com')) return 'YouTube';
+  /* ───────── platform helper ───────── */
+  private static detectPlatform(url: string): string {
+    if (/instagram\.com/.test(url)) return 'Instagram';
+    if (/(twitter|x)\.com/.test(url)) return 'X';
+    if (/tiktok\.com/.test(url)) return 'TikTok';
+    if (/facebook\.com/.test(url)) return 'Facebook';
+    if (/linkedin\.com/.test(url)) return 'LinkedIn';
+    if (/youtube\.com/.test(url)) return 'YouTube';
     return 'Unknown';
   }
 
-  static async analyzePost(postUrl: string, brandLogos: string[]): Promise<AnalysisResult> {
+  /* ───────── dev mock metrics ───────── */
+  private static devMockMetrics(): PostMetrics {
+    return {
+      impressions: 100_000,
+      engagements: { likes: 5_000, shares: 250, comments: 120 },
+      clicks: 80,
+    };
+  }
+
+  private static async fetchPostMetrics(postUrl: string): Promise<PostMetrics> {
+    if (import.meta.env.MODE === 'development') {
+      await new Promise((r) => setTimeout(r, 600)); // simulate latency
+      return this.devMockMetrics();
+    }
+    throw new Error('Real metrics fetch not yet implemented');
+  }
+
+  /* ───────── valuation ───────── */
+  private static calculateMediaValue(
+    metrics: PostMetrics,
+    cpm = 25,
+    cpe = 0.4,
+  ): number {
+    const base = (metrics.impressions / 1_000) * cpm;
+    const engTotal = Object.values(metrics.engagements).reduce((s, v) => s + v, 0);
+    const engVal = engTotal * cpe;
+    return Math.round((base + engVal) * 100) / 100;
+  }
+
+  /* ───────── top-level analyzer ───────── */
+  static async analyzePost(
+    postUrl: string,
+    brandLogos: string[],
+  ): Promise<AnalysisResult> {
+    const platform = this.detectPlatform(postUrl);
+
     try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      
-      // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Authentication required. Please sign in to analyze posts.');
+      // TODO replace with real logo-detection call
+      const logoDetected = brandLogos.length > 0 && Math.random() > 0.3;
+      if (!logoDetected) {
+        return { platform, logo_detected: false, message: 'No target logos found in post.' };
       }
 
-      // Call the Edge Function
-      const { data, error } = await supabase.functions.invoke('analyze-post', {
-        body: {
-          postUrl,
-          brandLogos
-        }
-      });
+      const metrics = await this.fetchPostMetrics(postUrl);
+      const mediaValue = this.calculateMediaValue(metrics);
+      const brand = brandLogos[0];
 
-      if (error) {
-        throw new Error(error.message || 'Analysis failed');
-      }
-
-      return data as AnalysisResult;
-
-    } catch (error) {
       return {
-        platform: 'Unknown',
+        platform,
+        brand,
+        logo_detected: true,
+        estimated_impressions: metrics.impressions,
+        engagements: metrics.engagements,
+        clicks: metrics.clicks,
+        media_value: mediaValue,
+      };
+    } catch (err) {
+      return {
+        platform,
         logo_detected: false,
-        error: error instanceof Error ? error.message : 'Analysis failed',
+        error: err instanceof Error ? err.message : 'Unexpected error',
         post_url: postUrl,
       };
     }

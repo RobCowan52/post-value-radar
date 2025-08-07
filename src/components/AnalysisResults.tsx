@@ -90,7 +90,7 @@ export const AnalysisResults = ({ result }: AnalysisResultsProps) => {
         />
         <MetricCard
           title="Media Value"
-          value={result.media_value || '$0'}
+          value={result.media_value ? `$${result.media_value.toLocaleString()}` : '$0'}
           icon={<TrendingUp className="w-5 h-5" />}
           gradient="from-analytics-orange to-destructive"
         />
